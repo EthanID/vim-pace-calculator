@@ -1,4 +1,5 @@
 # vim-pace-calculator
+![vim-pace-calculator logo](vim-pace-calculator.png)
 ## Description
 A running pace calculator that can calculator pace, time, and distance and works with "vim keys" to make finding what information you need as fast as possible
 
