@@ -1,0 +1,249 @@
+<html>
+    <body>
+	<img src="vim-pace-calculator.png">
+	<table class="vimBlack">
+	    <tr>
+		<td>Finding Time:<br><span class="top" id="leftTop"></span></td>
+		<td>Finding Pace:<br><span class="top" id="middleTop"></span></td>
+		<td>Finding Distance:<br><span class="top" id="rightTop"></span></td>
+	    </tr>
+	    <tr>
+		<td>Distance:<br><input class="input" id="leftCenter"></input></td>
+		<td>Distance:<br><input class="input" id="middleCenter"></input></td>
+		<td>Pace:<br><input class="input" id="rightCenter"></input></td>
+	    </tr>
+	    <tr>
+		<td>Pace:<br><input class="input" id="leftBottom"></input></td>
+		<td>Time:<br><input class="input" id="middleBottom"></input></td>
+		<td>Time:<br><input class="input" id="rightBottom"></input></td>
+	    </tr>
+	</table>
+	<span class="vimGreen">
+	    <ul>
+		<li>Navigate with the HJKL keys (H: left, J: down, K: up, L: left)</li>
+		<li>Type the time and/or pace and/or distance and the column will update</li>
+		<li>It's that easy!</li>
+	    </ul>
+	</span>
+    </body>
+    <style>
+	.vimGray {
+	    color: #808080;
+	}
+	.vimBlack {
+	    color: #000000;
+	}
+	.vimGreen {
+	    color: #019833;
+	}
+	.top {
+	    font-weight: bold;
+	}
+    </style>
+    <script>
+	document.getElementById("middleCenter").focus();
+	clearInputs();
+	document.addEventListener("keyup", function(event) {
+	    var focusedID = document.activeElement.id;
+	    switch(event.keyCode) {
+		case 72: // H (left)
+		    if(focusedID === "middleCenter") {
+			document.getElementById("leftCenter").focus();
+		    } else if(focusedID === "middleBottom") {
+			document.getElementById("leftBottom").focus();
+		    } else if(focusedID === "rightCenter") {
+			document.getElementById("middleCenter").focus();
+		    } else if(focusedID === "rightBottom") {
+			document.getElementById("middleBottom").focus();
+		    }
+		    removeHJKLFromInputs();
+		    break;
+		case 76: // L (right)
+		    if(focusedID === "leftCenter") {
+			document.getElementById("middleCenter").focus();
+		    } else if(focusedID === "leftBottom") {
+			document.getElementById("middleBottom").focus();
+		    } else if(focusedID === "middleCenter") {
+			document.getElementById("rightCenter").focus();
+		    } else if(focusedID === "middleBottom") {
+			document.getElementById("rightBottom").focus();
+		    }
+		    removeHJKLFromInputs();
+		    break;
+		case 13: // Enter (down)
+		case 74: // J (down)
+		    if(focusedID === "leftCenter") {
+			document.getElementById("leftBottom").focus();
+		    } else if(focusedID === "middleCenter") {
+			document.getElementById("middleBottom").focus();
+		    } else if(focusedID === "rightCenter") {
+			document.getElementById("rightBottom").focus();
+		    }
+		    removeHJKLFromInputs();
+		    break;
+		case 75: // K (up)
+		    if(focusedID === "leftBottom") {
+			document.getElementById("leftCenter").focus();
+		    } else if(focusedID === "middleBottom") {
+			document.getElementById("middleCenter").focus();
+		    } else if(focusedID === "rightBottom") {
+			document.getElementById("rightCenter").focus();
+		    }
+		    removeHJKLFromInputs();
+		    break;
+	    }
+	    updateValues();
+	});
+
+	function roundTo(num, precision) {
+	    var precisionNumber = Math.pow(10, precision);
+	    return Math.round(num * precisionNumber) / precisionNumber;
+	}
+
+	function sToSMH(seconds) {
+	    var SMH = [0, 0, 0];
+	    SMH[2] = Math.floor(seconds / 3600);
+	    SMH[1] = Math.floor((seconds - SMH[2] * 3600) / 60);
+	    SMH[0] = Math.floor(seconds - SMH[1] * 60 - SMH[2] * 3600);
+	    return SMH;
+	}
+
+	function SMHToS(SMH) {
+	    var seconds = SMH[0] + SMH[1] * 60 + SMH[2] * 3600;
+	    return seconds;
+	}
+
+	function formatSMH(SMH) {
+	    if(SMH[2] === 0 && SMH[1] === 0) {
+		return SMH[0] + "s";
+	    } else if(SMH[2] === 0) {
+		return SMH[1] + ":" + SMH[0];
+	    } else if(SMH[0]) {
+		return SMH[2] + ":" + SMH[1] + ":" + SMH[0];
+	    } else {
+		return "";
+	    }
+	}
+
+	function unformatSMH(rawSMH) {
+	    rawSMH = rawSMH.replace(/s/g, "");
+	    var sections = rawSMH.split(/[:\.]/);
+	    for(var i=0; i < sections.length; i++) {
+		sections[i] = parseInt(sections[i]);
+	    }
+	    if(sections.length === 1) {
+		return [sections[0], 0, 0];
+	    } else if(sections.length === 2) {
+		return [sections[1], sections[0], 0]
+	    } else if(sections.length === 3) {
+		return [sections[2], sections[1], sections[0]];
+	    }
+	}
+
+	function distanceToMiles(distance) {
+	    distance = distance.replace(/\s/g, "");
+	    distance = distance.toLowerCase();
+	    if(distance.search("half") !== -1) {
+		return 13.1;
+	    } else if(distance.search("marathon") !== -1 || distance.search("full") !== -1) {
+		return 26.2;
+	    } else if(distance.search("km") !== -1 || distance.search("k") !== -1) {
+		distance = distance.replace(/[^0-9]/g, "");
+		distance = parseInt(distance);
+		distance = distance * 0.6214;
+		return roundTo(distance, 3);
+	    } else if(distance.search("mi") !== -1) {
+		distance = distance.replace(/[^0-9]/g, "");
+		distance = parseInt(distance);
+		return distance;
+	    } else if(distance.search("m") !== -1) {
+		distance = distance.replace(/[^0-9]/g, "");
+		distance = parseInt(distance);
+		distance = distance / 1600;
+		return roundTo(distance, 3);
+	    } else {
+		return roundTo(distance, 3);
+	    }
+	}
+
+	function formatMiles(miles) {
+	    // miles = parseInt(miles);
+	    // var roundedMiles = roundTo(miles, 2);
+	    // if(roundedMiles === 1.98) {
+		// return miles + " mi (3200M)";
+	    // } else if(roundedMiles === .99) {
+		// return miles + " mi (1600M)";
+	    // } else if(roundedMiles === .62) {
+		// return miles + " mi (1000M)";
+	    // } else {
+		// return miles + " mi";
+	    // }
+	    if(isNaN(miles)) {
+		return "";
+	    } else {
+		miles = parseInt(miles);
+		miles = roundTo(miles, 2);
+		return miles + " mi"
+	    }
+	}
+
+	function paceToSeconds(pace) {
+	    var sections = pace.split(/[:\.]/);
+	    for(var i=0; i < sections.length; i++) {
+		sections[i] = parseInt(sections[i]);
+	    }
+	    if(sections.length === 1) {
+		return sections[0];
+	    } else if(sections.length === 2) {
+		return SMHToS([sections[1], sections[0], 0]);
+	    } else if(sections.length === 3) {
+		return SMHToS([sections[2], sections[1], sections[0]]);
+	    }
+	}
+
+	function getTime(distance, pace) {
+	    distanceInMiles = distanceToMiles(distance);
+	    paceInSeconds = paceToSeconds(pace);
+	    timeInSeconds = distanceInMiles * paceInSeconds;
+	    return sToSMH(timeInSeconds);
+	}
+
+	function getPace(distance, time) {
+	    distanceInMiles = distanceToMiles(distance);
+	    timeInSeconds = SMHToS(unformatSMH(time));
+	    paceInSeconds = timeInSeconds / distanceInMiles;
+	    return sToSMH(paceInSeconds);
+	}
+
+	function getDistance(pace, time) {
+	    timeInSeconds = SMHToS(unformatSMH(time));
+	    paceInSeconds = paceToSeconds(pace);
+	    distance = timeInSeconds / paceInSeconds;
+	    return distance;
+	}
+
+	function updateValues() {
+	    document.getElementById("leftTop").innerHTML = formatSMH(getTime(document.getElementById("leftCenter").value, document.getElementById("leftBottom").value));
+	    document.getElementById("middleTop").innerHTML = formatSMH(getPace(document.getElementById("middleCenter").value, document.getElementById("middleBottom").value));
+	    document.getElementById("rightTop").innerHTML = formatMiles(getDistance(document.getElementById("rightCenter").value, document.getElementById("rightBottom").value));
+	}
+
+	function removeHJKLFromInputs() { // TODO: FIND WAY TO AUTODETECT WHEN K IS ON END OF DISTANCE NUMBER
+	    document.getElementById("leftCenter").value = document.getElementById("leftCenter").value.replace(/[hjl]/g, "");
+	    document.getElementById("middleCenter").value = document.getElementById("middleCenter").value.replace(/[hjl]/g, "");
+	    document.getElementById("rightCenter").value = document.getElementById("rightCenter").value.replace(/[hjkl]/g, "");
+	    document.getElementById("leftBottom").value = document.getElementById("leftBottom").value.replace(/[hjkl]/g, "");
+	    document.getElementById("middleBottom").value = document.getElementById("middleBottom").value.replace(/[hjkl]/g, "");
+	    document.getElementById("rightBottom").value = document.getElementById("rightBottom").value.replace(/[hjkl]/g, "");
+	}
+
+	function clearInputs() {
+	    document.getElementById("leftCenter").value = "";
+	    document.getElementById("middleCenter").value = "";
+	    document.getElementById("rightCenter").value = "";
+	    document.getElementById("leftBottom").value = "";
+	    document.getElementById("middleBottom").value = "";
+	    document.getElementById("rightBottom").value = "";
+	}
+    </script>
+</html>
